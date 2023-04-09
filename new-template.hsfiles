@@ -1,8 +1,12 @@
 {-# START_FILE stack.yaml #-}
-resolver: ghc-9.6.1
+# https://www.stackage.org/lts-20.17
+resolver: lts-20.17
+
 packages:
 - .
+
 extra-deps: []
+
 nix:
   enable: true
   pure: true
