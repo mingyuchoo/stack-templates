@@ -113,6 +113,24 @@ main = someFunc
 {-# START_FILE README.md #-}
 # {{name}}
 
+## How to build
+
+```bash
+stack build
+```
+
+## How to test
+
+```bash
+stack test --fast --file-watch --watch-all
+```
+
+## How to run
+
+```bash
+stack run
+```
+
 {-# START_FILE CHANGELOG.md #-}
 # Changelog for `{{ name }}`
 
