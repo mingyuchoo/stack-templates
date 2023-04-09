@@ -21,7 +21,7 @@ extra-source-files:
 description:         Please see the README on GitHub at <https://github.com/{{github-username}}{{^github-username}}githubuser{{/github-username}}/{{name}}#readme>
 
 dependencies:
-- base >= 4.9.1.0 && < 5
+- base >= 4.18.0.0 && < 5
 - parallel
 
 default-extensions:
@@ -71,6 +71,7 @@ main = defaultMain
 {-# START_FILE test/Spec.hs #-}
 -- {-# OPTIONS_GHC -F -pgmF doctest-discover #-}
 -- {-# OPTIONS_GHC -F -pgmF hspec-discover   #-}
+
 main :: IO ()
 main = putStrLn "Test suite not yet implemented."
 
