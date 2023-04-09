@@ -1,3 +1,16 @@
+{-# START_FILE stack.yaml #-}
+resolver: ghc-9.6.1
+packages:
+- .
+extra-deps: []
+nix:
+  enable: true
+  pure: true
+  packages: []
+  nix-shell-options: []
+  path: []
+  add-gc-roots: false
+
 {-# START_FILE package.yaml #-}
 name:                {{name}}
 version:             0.1.0.0
