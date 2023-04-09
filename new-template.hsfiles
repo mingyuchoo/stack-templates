@@ -18,24 +18,18 @@ nix:
 {-# START_FILE package.yaml #-}
 name:                {{name}}
 version:             0.1.0.0
-github:              "{{github-username}}{{^github-username}}githubuser{{/github-username}}/{{name}}"
+github:              {{github-username}}{{^github-username}}githubuser{{/github-username}}/{{name}}
 license:             MIT
-author:              "{{author-name}}{{^author-name}}Author name here{{/author-name}}"
-maintainer:          "{{author-email}}{{^author-email}}example@example.com{{/author-email}}"
-copyright:           "{{copyright}}{{^copyright}}{{year}}{{^year}}2023{{/year}} {{author-name}}{{^author-name}}Author name here{{/author-name}}{{/copyright}}"
+author:              {{author-name}}{{^author-name}}Author name here{{/author-name}}
+maintainer:          {{author-email}}{{^author-email}}example@example.com{{/author-email}}
+copyright:           {{copyright}}{{^copyright}}{{year}}{{^year}}2023{{/year}} {{author-name}}{{^author-name}}Author name here{{/author-name}}{{/copyright}}
+synopsis:            Short description of your package
+category:            {{category}}{{^category}}Learning{{/category}}
+description:         Please see the README on GitHub at <https://github.com/{{github-username}}{{^github-username}}githubuser{{/github-username}}/{{name}}#readme>
 
 extra-source-files:
 - README.md
 - CHANGELOG.md
-
-# Metadata used when publishing your package
-# synopsis:            Short description of your package
-# category:            {{category}}{{^category}}Web{{/category}}
-
-# To avoid duplicated efforts in documentation and dealing with the
-# complications of embedding Haddock markup inside cabal files, it is
-# common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/{{github-username}}{{^github-username}}githubuser{{/github-username}}/{{name}}#readme>
 
 dependencies:
 - base >= 4.16.4.0 && < 5
@@ -47,7 +41,6 @@ default-extensions:
 ghc-options:
 - -Wall
 - -O2
-- -haddock
 
 library:
   source-dirs: src
