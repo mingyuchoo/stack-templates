@@ -1,6 +1,6 @@
 {-# START_FILE stack.yaml #-}
-# https://www.stackage.org/lts-20.17
-resolver: lts-20.17
+# https://www.stackage.org/lts-20.25
+resolver: lts-20.25
 
 packages:
 - .
