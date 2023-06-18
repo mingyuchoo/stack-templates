@@ -46,6 +46,8 @@ ghc-options:
 - -Wall
 - -O2
 
+language: GHC2021
+
 library:
   source-dirs: src
 
