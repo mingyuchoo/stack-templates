@@ -38,8 +38,8 @@ extra-source-files:
 dependencies:
 - base >= 4.18 && < 5
 - containers
-- flow >= 2.0.0.4
-- parallel >= 3.2.2.0
+- flow == 2.0.0.4
+- parallel == 3.2.2.0
 
 default-extensions:
 - StandaloneKindSignatures
