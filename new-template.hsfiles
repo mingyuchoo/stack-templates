@@ -5,7 +5,9 @@ resolver: ghc-9.6.3
 packages:
 - .
 
-extra-deps: []
+extra-deps:
+- flow-2.0.0.4@sha256:c0b4ff962f463760112d70b6d85cc7583222505e988b5d043997db9d608713f3,1305
+- parallel-3.2.2.0@sha256:b993406e98fe9126eff4a69d28e7e361037dd1c0892a9fd6c26e1f92eb9c4fa4,1926
 
 flags: {}
 
@@ -30,6 +32,8 @@ extra-source-files:
 dependencies:
 - base >= 4.18 && < 5
 - containers
+- flow
+- parallel
 
 default-extensions:
 - StandaloneKindSignatures
