@@ -2,10 +2,54 @@
 
 Templates for Stack
 
-- `new-template`
+- `nix-template`: for NixOS
+- `new-template`: for others
 
 ## How to use stack templates
 
+### NixOS
+
 ```bash
-stack new hs-demo mingyuchoo/new-template
+stack new <project-name> mingyuchoo/nix-template
+```
+
+### Others
+
+```bash
+stack new <project-name> mingyuchoo/new-template
+```
+
+## How to upgrade versions of GHC and `base` package
+
+### How to upgra GHC
+
+Check the current ghc version
+
+```bash
+ghc-pkg --version
+```
+
+Update `resolver` in `stack.yaml` file
+
+```yaml
+...
+resolver: ghc-9.6.3
+...
+```
+
+### How to upgrade `base` package
+
+Check the current `base` package version
+
+```bash
+ghc-pkg list base
+```
+
+Update `base` version in `dependencies` in `package.yaml` file
+
+```yaml
+...
+dependencies:
+- base >= 4.18 && < 5
+...
 ```
