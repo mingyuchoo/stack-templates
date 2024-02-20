@@ -6,13 +6,9 @@ resolver:
 packages:
 - .
 
-extra-deps:
-- flow
-- parallel
-
-flags: {}
-
 extra-package-dbs: []
+extra-deps: []
+flags: {}
 
 {-# START_FILE package.yaml #-}
 name:                {{name}}
