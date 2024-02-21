@@ -1,7 +1,6 @@
 {-# START_FILE stack.yaml #-}
 # https://www.stackage.org/lts-22.6
-resolver:
-  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/22/11.yaml
+resolver: lts-22.11
 
 packages:
 - .
