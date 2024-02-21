@@ -33,7 +33,7 @@ Update `resolver` in `stack.yaml` file
 
 ```yaml
 ...
-resolver: ghc-9.6.3
+resolver: lts-22.11
 ...
 ```
 
