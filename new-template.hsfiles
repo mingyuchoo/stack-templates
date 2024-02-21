@@ -146,7 +146,7 @@ ghcid:
 	ghcid -c="stack ghci test/Spec.hs"
 
 run:
-	stack run
+	stack exec {{name}}-exe
 
 {-# START_FILE README.md #-}
 # {{name}}
