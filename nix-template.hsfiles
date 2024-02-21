@@ -132,13 +132,41 @@ main = do
   hSetBuffering stdout NoBuffering
   someFunc
 
+{-# START_FILE Makefile #-}
+all: clean setup build test run
+
+clean:
+	stack clean
+
+setup:
+	stack setup
+	stack test --only-dependencies
+
+build:
+	stack build
+
+build-fast:
+	stack build --fast --file-watch --ghc-options "-j4 +RTS -A128m -n2m -RTS"
+
+test:
+	stack test --fast --file-watch --watch-all
+
+coverage:
+	stack test --coverage --fast --file-watch --watch-all --haddock
+
+ghcid:
+	ghcid -c="stack ghci test/Spec.hs"
+
+run:
+	stack run
+
 {-# START_FILE README.md #-}
 # {{name}}
 
 ## How to create a project
 
 ```bash
-stack new <project-name> mingyuchoo/nix-template
+stack new <project-name> mingyuchoo/new-template
 ```
 
 ## How to build
@@ -164,6 +192,7 @@ ghcid -c="stack ghci test/Spec.hs"
 ```bash
 stack run
 ```
+You can also use `Makefile` for these works.
 
 {-# START_FILE CHANGELOG.md #-}
 # Changelog for `{{ name }}`
