@@ -94,6 +94,7 @@ main = defaultMain
 -- {-# OPTIONS_GHC -F -pgmF hspec-discover   #-}
 
 import Test.Hspec
+import Lib
 
 main :: IO ()
 main = hspec spec
