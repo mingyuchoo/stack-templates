@@ -75,3 +75,40 @@ dependencies:
 - base >= 4.18 && < 5
 ...
 ```
+
+## Basic Stack Commands
+
+```bash
+$ stack new <project-name>
+# or
+$ stack new <project-name> quanterall/basic
+
+$ stack build --test --file-watch --watch-all
+# or
+# build more faster
+$ stack build --fast --file-watch --ghc-options "-j4 +RTS -A128m -n2m -RTS"
+
+$ stack test --file-watch --watch-all
+# or
+# test automatically
+$ ghcid --command "stack ghci test/Spec.hs"
+
+# https://docs.haskellstack.org/en/stable/build_command/
+$ stack test --coverage --fast --file-watch --watch-all --haddock
+
+$ stack run
+```
+
+## Reformat using Stylish-haskell
+
+```bash
+$ stylish-haskell -ri **/*.hs
+```
+
+## Tips and Tech
+
+### `haskell-language-server` doesn't run in Emacs
+
+When developing Haskell code using Emacs, an error may occur in haskell-language-server.
+In that case, the error will be resolved by installing haskell-language-server,
+which is the same as the GHC version, in the lsp-haskell settings in `.emacs` and setting the path correctly.
