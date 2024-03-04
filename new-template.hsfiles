@@ -9,6 +9,7 @@ extra-package-dbs: []
 extra-deps: []
 flags: {}
 
+notify-if-nix-on-path: false
 #nix:
 #  enable: true
 #  pure: true
