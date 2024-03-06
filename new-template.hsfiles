@@ -140,8 +140,7 @@ main = do
   someFunc
 
 {-# START_FILE Makefile #-}
-all:
-	clean setup build test run
+all: clean setup build test run
 
 clean:
 	stack clean
