@@ -157,7 +157,7 @@ build-fast:
 	stack build --fast --file-watch --ghc-options "-j4 +RTS -A128m -n2m -RTS"
 
 test:
-	stack test --fast --file-watch --watch-all
+	stack test --fast
 
 coverage:
 	stack test --coverage --fast --haddock
