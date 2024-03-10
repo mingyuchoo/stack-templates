@@ -160,6 +160,12 @@ test:
 	stack test --fast --file-watch --watch-all
 
 coverage:
+	stack test --coverage --fast --haddock
+
+watch-test:
+	stack test --fast --file-watch --watch-all
+
+watch-coverage:
 	stack test --coverage --fast --file-watch --watch-all --haddock
 
 ghcid:
