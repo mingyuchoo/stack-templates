@@ -140,6 +140,8 @@ main = do
   someFunc
 
 {-# START_FILE Makefile #-}
+.PHONY: test coverage
+
 all: clean setup build test run
 
 clean:
