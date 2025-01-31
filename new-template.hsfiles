@@ -26,7 +26,7 @@ notify-if-nix-on-path: false
 name:                {{name}}
 version:             0.1.0.0
 github:              {{github-username}}{{^github-username}}githubuser{{/github-username}}/{{name}}
-license:             MIT
+license:             BSD 3-Clause
 author:              {{author-name}}{{^author-name}}Author name here{{/author-name}}
 maintainer:          {{author-email}}{{^author-email}}example@example.com{{/author-email}}
 copyright:           {{copyright}}{{^copyright}}{{year}}{{^year}}2023{{/year}} {{author-name}}{{^author-name}}Author name here{{/author-name}}{{/copyright}}
