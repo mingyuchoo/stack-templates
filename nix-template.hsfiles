@@ -1,6 +1,6 @@
 {-# START_FILE stack.yaml #-}
-# https://www.stackage.org/lts-22.6
-resolver: lts-22.6
+# https://www.stackage.org/lts-24.20
+resolver: lts-24.20
 
 packages:
 - .
@@ -25,10 +25,10 @@ flags: {}
 name:                {{name}}
 version:             0.1.0.0
 github:              {{github-username}}{{^github-username}}githubuser{{/github-username}}/{{name}}
-license:             BSD 3-Clause
+license:             BSD-3-Clause
 author:              {{author-name}}{{^author-name}}Author name here{{/author-name}}
 maintainer:          {{author-email}}{{^author-email}}example@example.com{{/author-email}}
-copyright:           {{copyright}}{{^copyright}}{{year}}{{^year}}2023{{/year}} {{author-name}}{{^author-name}}Author name here{{/author-name}}{{/copyright}}
+copyright:           {{copyright}}{{^copyright}}{{year}}{{^year}}2026{{/year}} {{author-name}}{{^author-name}}Author name here{{/author-name}}{{/copyright}}
 synopsis:            Short description of your package
 category:            {{category}}{{^category}}Learning{{/category}}
 description:         Please see the README on GitHub at <https://github.com/{{github-username}}{{^github-username}}githubuser{{/github-username}}/{{name}}#readme>
@@ -44,6 +44,8 @@ dependencies:
 - parallel
 
 default-extensions:
+- DataKinds
+- ExplicitForAll
 - StandaloneKindSignatures
 - TypeApplications
 
@@ -65,7 +67,7 @@ executables:
     - -dynamic
     - -threaded
     - -rtsopts
-    - -with-rtsopts=-N4
+    - -with-rtsopts=-N
     dependencies:
     - {{name}}
 
@@ -77,7 +79,7 @@ tests:
     - -dynamic
     - -threaded
     - -rtsopts
-    - -with-rtsopts=-N4
+    - -with-rtsopts=-N
     dependencies:
     - {{name}}
     - hspec
@@ -222,7 +224,7 @@ and this project adheres to the
 ## 0.1.0.0 - YYYY-MM-DD
 
 {-# START_FILE LICENSE #-}
-Copyright {{author-name}}{{^author-name}}Author name here{{/author-name}} (c) {{year}}{{^year}}2023{{/year}}
+Copyright {{author-name}}{{^author-name}}Author name here{{/author-name}} (c) {{year}}{{^year}}2026{{/year}}
 
 All rights reserved.
 
@@ -258,3 +260,61 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *~
 
 {-# START_FILE .projectile #-}
+
+
+{-# START_FILE .ghcid #-}
+--command=stack ghci
+--test=:main
+--warnings
+--restart=stack.yaml
+--restart=package.yaml
+
+{-# START_FILE .ghcid #-}
+-- OPTIONS_GHC
+:set +m
+:set +s
+:set +t
+:set -Wall
+
+--  PROMPT
+:set prompt "\ESC[1;35m\x03BB> \ESC[m"
+:set prompt-cont "\ESC[1;35m > \ESC[m"
+
+-- INCLUDE DIRECTORIES
+:set -iapp
+:set -isrc
+:set -itest
+
+-- LANGUAGE EXTENSIONS
+:set -XExplicitForAll
+:set -XStandaloneKindSignatures
+
+-- HLINT
+:def hlint const . return $ ":! hlint \"src\""
+
+-- HOOGLE
+:def hoogle \x -> return $ ":! hoogle --count=20 \"" ++ x ++ "\""
+
+{-# START_FILE default.nix #-}
+# default.nix
+let
+  pkgs = import <nixpkgs> {};
+  compilerVersion = "ghc963";
+  compiler = pkgs.haskell.packages."${compilerVersion}";
+in
+  compiler.developPackage {
+  root = ./.;
+  modifier = drv:
+    pkgs.haskell.lib.addBuildTools drv (
+      with pkgs.haskellPackages;
+      [ stack
+        cabal-install
+        stylish-haskell
+        haskell-language-server
+        hindent
+        hlint
+        hoogle
+        ghcid
+      ]
+    );
+}

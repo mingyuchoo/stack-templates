@@ -1,6 +1,6 @@
 {-# START_FILE stack.yaml #-}
-# https://www.stackage.org/lts-22.6
-resolver: lts-22.6
+# https://www.stackage.org/lts-24.20
+resolver: lts-24.20
 
 packages:
 - .
@@ -26,10 +26,10 @@ notify-if-nix-on-path: false
 name:                {{name}}
 version:             0.1.0.0
 github:              {{github-username}}{{^github-username}}githubuser{{/github-username}}/{{name}}
-license:             BSD 3-Clause
+license:             BSD-3-Clause
 author:              {{author-name}}{{^author-name}}Author name here{{/author-name}}
 maintainer:          {{author-email}}{{^author-email}}example@example.com{{/author-email}}
-copyright:           {{copyright}}{{^copyright}}{{year}}{{^year}}2023{{/year}} {{author-name}}{{^author-name}}Author name here{{/author-name}}{{/copyright}}
+copyright:           {{copyright}}{{^copyright}}{{year}}{{^year}}2026{{/year}} {{author-name}}{{^author-name}}Author name here{{/author-name}}{{/copyright}}
 synopsis:            Short description of your package
 category:            {{category}}{{^category}}Learning{{/category}}
 description:         Please see the README on GitHub at <https://github.com/{{github-username}}{{^github-username}}githubuser{{/github-username}}/{{name}}#readme>
@@ -45,6 +45,8 @@ dependencies:
 - parallel
 
 default-extensions:
+- DataKinds
+- ExplicitForAll
 - StandaloneKindSignatures
 - TypeApplications
 
@@ -66,7 +68,7 @@ executables:
     - -dynamic
     - -threaded
     - -rtsopts
-    - -with-rtsopts=-N4
+    - -with-rtsopts=-N
     dependencies:
     - {{name}}
 
@@ -78,7 +80,7 @@ tests:
     - -dynamic
     - -threaded
     - -rtsopts
-    - -with-rtsopts=-N4
+    - -with-rtsopts=-N
     dependencies:
     - {{name}}
     - hspec
@@ -140,40 +142,86 @@ main = do
   someFunc
 
 {-# START_FILE Makefile #-}
-.PHONY: test coverage
+.PHONY: test coverage install update-stack-yaml
+
+# Extract project name from directory path
+PROJECT_NAME := $(shell basename $(CURDIR))
 
 all: clean setup build test run
 
 clean:
 	stack clean
 
-setup:
+update-stack-yaml:
+	@if [ "`uname`" = "Darwin" ]; then \
+	  sed -i '' 's/container-name: ".*"/container-name: "$(PROJECT_NAME)"/g' stack.yaml; \
+	  sed -i '' 's/ARG PROJECT_NAME=.*/ARG PROJECT_NAME=$(PROJECT_NAME)/g' Dockerfile; \
+	else \
+	  sed -i 's/container-name: ".*"/container-name: "$(PROJECT_NAME)"/g' stack.yaml; \
+	  sed -i 's/ARG PROJECT_NAME=.*/ARG PROJECT_NAME=$(PROJECT_NAME)/g' Dockerfile; \
+	fi
+
+setup: update-stack-yaml
 	stack setup
 	stack test --only-dependencies
 
-build:
-	stack build
+format: setup
+	stylish-haskell --config .stylish-haskell.yaml -r -i ./**/*.hs
 
-build-fast:
-	stack build --fast --file-watch --ghc-options "-j4 +RTS -A128m -n2m -RTS"
+build: setup
+	stack build --fast -j4 --ghc-options "-j16 +RTS -A256m -RTS"
 
-test:
+test: setup
 	stack test --fast
 
-coverage:
+coverage: setup
 	stack test --coverage --fast --haddock
 
-watch-test:
+watch-test: setup
 	stack test --fast --file-watch --watch-all
 
-watch-coverage:
+watch-coverage: setup
 	stack test --coverage --fast --file-watch --watch-all --haddock
 
-ghcid:
+ghcid: setup
 	ghcid --command "stack ghci test/Spec.hs"
 
-run:
-	time stack exec {{name}}-exe
+run: setup
+	time stack exec $(PROJECT_NAME)-exe
+
+release: setup
+	stack build -j4 --ghc-options "-j16 +RTS -A256m -RTS" --docker
+
+docker-build: releasefile)
+	docker build --build-arg PROJECT_NAME=$(PROJECT_NAME) -t $(PROJECT_NAME):latest -f docker/Dockerfile .
+
+docker-build-multi: 
+	docker build --build-arg PROJECT_NAME=$(PROJECT_NAME) -t $(PROJECT_NAME):latest -f docker/Dockerfile .
+
+docker-run: docker-build
+	mkdir -p ./data
+	docker run -it --rm \
+	  --name $(PROJECT_NAME)-app \
+	  -p 8000:8000 \
+	  -v $(PWD)/data:/app/data \
+	  $(PROJECT_NAME):latest
+
+docker-run-multi: docker-build-multi
+	docker run -it --rm -p 8000:8000 $(PROJECT_NAME):latest
+
+docker-compose-up:
+	docker compose -f docker/docker-compose.yaml up --build -d
+
+docker-compose-down:
+	docker compose -f docker/docker-compose.yaml down --volumes
+
+docker-compose-logs:
+	docker compose -f docker/docker-compose.yaml logs -f
+
+install: release
+	mkdir -p $(HOME)/.local/bin
+	cp $(shell stack path --local-install-root)/bin/$(PROJECT_NAME)-exe $(HOME)/.local/bin/
+
 
 {-# START_FILE README.md #-}
 # {{name}}
@@ -223,7 +271,7 @@ and this project adheres to the
 ## 0.1.0.0 - YYYY-MM-DD
 
 {-# START_FILE LICENSE #-}
-Copyright {{author-name}}{{^author-name}}Author name here{{/author-name}} (c) {{year}}{{^year}}2023{{/year}}
+Copyright {{author-name}}{{^author-name}}Author name here{{/author-name}} (c) {{year}}{{^year}}2026{{/year}}
 
 All rights reserved.
 
@@ -259,3 +307,85 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *~
 
 {-# START_FILE .projectile #-}
+
+
+{-# START_FILE .ghcid #-}
+--command=stack ghci
+--test=:main
+--warnings
+--restart=stack.yaml
+--restart=package.yaml
+
+{-# START_FILE .ghcid #-}
+-- OPTIONS_GHC
+:set +m
+:set +s
+:set +t
+:set -Wall
+
+--  PROMPT
+:set prompt "\ESC[1;35m\x03BB> \ESC[m"
+:set prompt-cont "\ESC[1;35m > \ESC[m"
+
+-- INCLUDE DIRECTORIES
+:set -iapp
+:set -isrc
+:set -itest
+
+-- LANGUAGE EXTENSIONS
+:set -XExplicitForAll
+:set -XStandaloneKindSignatures
+
+-- HLINT
+:def hlint const . return $ ":! hlint \"src\""
+
+-- HOOGLE
+:def hoogle \x -> return $ ":! hoogle --count=20 \"" ++ x ++ "\""
+
+{-# START_FILE default.nix #-}
+# default.nix
+let
+  pkgs = import <nixpkgs> {};
+  compilerVersion = "ghc963";
+  compiler = pkgs.haskell.packages."${compilerVersion}";
+in
+  compiler.developPackage {
+  root = ./.;
+  modifier = drv:
+    pkgs.haskell.lib.addBuildTools drv (
+      with pkgs.haskellPackages;
+      [ stack
+        cabal-install
+        stylish-haskell
+        haskell-language-server
+        hindent
+        hlint
+        hoogle
+        ghcid
+      ]
+    );
+}
+
+{-# START_FILE Dockerfile #-}
+ARG PROJECT_NAME=servant-t02-todolist
+FROM fpco/stack-build:lts-24.20
+WORKDIR /app
+
+ARG PROJECT_NAME
+COPY stack.yaml stack.yaml.lock package.yaml ${PROJECT_NAME}.cabal Setup.hs ./
+COPY README.md CHANGELOG.md LICENSE ./
+COPY src/ src/
+COPY app/ app/
+COPY test/ test/
+COPY static/ static/
+
+RUN stack setup --no-docker && stack build --dependencies-only --no-docker
+
+ARG PROJECT_NAME
+RUN stack install --no-docker --local-bin-path /app/bin
+
+RUN cp /app/bin/${PROJECT_NAME}-exe /app/bin/app-exe 
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "echo \"Starting server on port 8000...\" && /app/bin/app-exe"]

@@ -21,7 +21,7 @@ so an error occurs when running `stack`.
 To resolve this, change the resolver version
 in the `$HOME/.stack/global-project/stack.yaml` file
 to the version that exists in the NixOS channel.
-For example, it could be `lts-22.6`.**
+For example, it could be `lts-24.20`.**
 
 
 ## How to use stack templates
@@ -54,7 +54,7 @@ Update `resolver` in `stack.yaml` file
 ...
 
 # Latest version support by NixOS below
-resolver: lts-22.6
+resolver: lts-24.20
 
 ...
 ```
