@@ -118,17 +118,17 @@ spec = do
             it "should parse floating-point numbers" $ do
                 read "2.5" `shouldBe` (2.5 :: Float)
     describe "Given Lib" $ do
-        context "when use `someFunc` function" $ do
+        context "when use `cliMain` function" $ do
             it "should be succeeded" $ do
-              someFunc
+              cliMain
 
 {-# START_FILE src/Lib.hs #-}
 module Lib
-    ( someFunc
+    ( cliMain
     ) where
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
+cliMain :: IO ()
+cliMain = putStrLn "cliMain"
 
 {-# START_FILE app/Main.hs #-}
 module Main
@@ -145,7 +145,7 @@ import System.IO
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
-  someFunc
+  cliMain
 
 {-# START_FILE Makefile #-}
 .PHONY: test coverage install update-stack-yaml

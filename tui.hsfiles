@@ -40,11 +40,17 @@ extra-source-files:
 
 dependencies:
 - base >= 4.18 && < 5
+- brick
 - containers
 - flow
+- microlens
+- microlens-th
 - mtl
 - parallel
 - text
+- time
+- vector
+- vty
 
 default-extensions:
 - DataKinds
@@ -54,6 +60,7 @@ default-extensions:
 - KindSignatures
 - StandaloneKindSignatures
 - OverloadedStrings
+- TemplateHaskell
 - TypeApplications
 
 ghc-options:
@@ -118,17 +125,29 @@ spec = do
             it "should parse floating-point numbers" $ do
                 read "2.5" `shouldBe` (2.5 :: Float)
     describe "Given Lib" $ do
-        context "when use `webMain` function" $ do
+        context "when use `tuiMain` function" $ do
             it "should be succeeded" $ do
-              webMain
+              tuiMain
 
 {-# START_FILE src/Lib.hs #-}
 module Lib
-    ( webMain
+    ( tuiMain
     ) where
 
-webMain :: IO ()
-webMain = putStrLn "webMain"
+import Brick
+import Brick.Widgets.Border (border, borderWithLabel, hBorder)
+import Brick.Widgets.Center (center, hCenter)
+import Brick.Widgets.List
+import qualified Brick.Widgets.Edit as E
+import qualified Graphics.Vty as V
+import qualified Data.Vector as Vec
+import Lens.Micro ((^.), (&), (.~), (%~))
+import Lens.Micro.TH (makeLenses)
+import Data.Time.Clock (getCurrentTime)
+import Data.Time.Format (formatTime, defaultTimeLocale)
+
+tuiMain :: IO ()
+tuiMain = putStrLn "tuiMain"
 
 {-# START_FILE app/Main.hs #-}
 module Main
@@ -145,7 +164,7 @@ import System.IO
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
-  webMain
+  tuiMain
 
 {-# START_FILE Makefile #-}
 .PHONY: test coverage install update-stack-yaml
@@ -201,19 +220,15 @@ release: setup
 docker-build: release
 	docker build --build-arg PROJECT_NAME=$(PROJECT_NAME) -t $(PROJECT_NAME):latest -f docker/Dockerfile .
 
-docker-build-multi: 
+docker-build-multi:
 	docker build --build-arg PROJECT_NAME=$(PROJECT_NAME) -t $(PROJECT_NAME):latest -f docker/Dockerfile .
 
 docker-run: docker-build
 	mkdir -p ./data
 	docker run -it --rm \
 	  --name $(PROJECT_NAME)-app \
-	  -p 8000:8000 \
 	  -v $(PWD)/data:/app/data \
 	  $(PROJECT_NAME):latest
-
-docker-run-multi: docker-build-multi
-	docker run -it --rm -p 8000:8000 $(PROJECT_NAME):latest
 
 docker-compose-up:
 	docker compose -f docker/docker-compose.yaml up --build -d
@@ -235,7 +250,7 @@ install: release
 ## How to create a project
 
 ```bash
-stack new <project-name> mingyuchoo/new-template
+stack new <project-name> mingyuchoo/cli
 ```
 
 ## How to build
@@ -323,24 +338,24 @@ echo "Formatting Haskell files..."
 # Function to format files in a directory
 format_directory() {
   local dir=$1
-  
+
   # Check if directory exists
   if [ ! -d "$dir" ]; then
     echo "Directory $dir does not exist, skipping..."
     return
   fi
-  
+
   # Check if there are any .hs files in the directory
   if [ -z "$(find "$dir" -name '*.hs' 2>/dev/null)" ]; then
     echo "No Haskell files found in $dir, skipping..."
     return
   fi
-  
+
   # Process each .hs file in the directory
   find "$dir" -name "*.hs" | while read -r file; do
     if [ -f "$file" ]; then
       echo "Processing $file"
-      
+
       # Check for <| operator in test files
       if [[ "$dir" == "test" && $(grep -q "<|" "$file"; echo $?) -eq 0 ]]; then
         echo "Skipping $file (contains <| operator)"
@@ -484,18 +499,15 @@ COPY README.md CHANGELOG.md LICENSE ./
 COPY src/ src/
 COPY app/ app/
 COPY test/ test/
-COPY static/ static/
 
 RUN stack setup --no-docker && stack build --dependencies-only --no-docker
 
 ARG PROJECT_NAME
 RUN stack install --no-docker --local-bin-path /app/bin
 
-RUN cp /app/bin/${PROJECT_NAME}-exe /app/bin/app-exe 
+RUN cp /app/bin/${PROJECT_NAME}-exe /app/bin/app-exe
 
-EXPOSE 8000
-
-CMD ["sh", "-c", "echo \"Starting server on port 8000...\" && /app/bin/app-exe"]
+CMD ["sh", "-c", "echo \"Starting app...\" && /app/bin/app-exe"]
 
 {-# START_FILE docker/docker-compose.yaml #-}
 services:
@@ -506,19 +518,9 @@ services:
       args:
         PROJECT_NAME: ${PROJECT_NAME}
     container_name: ${PROJECT_NAME}-app
-    ports:
-      - "8000:8000"
     volumes:
       - ../data:/app/data
-    environment:
-      - PORT=8000
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 volumes:
   data:
     driver: local
