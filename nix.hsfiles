@@ -376,7 +376,7 @@ cabal: true
 --restart=stack.yaml
 --restart=package.yaml
 
-{-# START_FILE .ghcid #-}
+{-# START_FILE .ghci #-}
 -- OPTIONS_GHC
 :set +m
 :set +s

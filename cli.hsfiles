@@ -161,10 +161,10 @@ clean:
 update-stack-yaml:
 	@if [ "`uname`" = "Darwin" ]; then \
 	  sed -i '' 's/container-name: ".*"/container-name: "$(PROJECT_NAME)"/g' stack.yaml; \
-	  sed -i '' 's/ARG PROJECT_NAME=.*/ARG PROJECT_NAME=$(PROJECT_NAME)/g' Dockerfile; \
+	  sed -i '' 's/ARG PROJECT_NAME=.*/ARG PROJECT_NAME=$(PROJECT_NAME)/g' docker/Dockerfile; \
 	else \
 	  sed -i 's/container-name: ".*"/container-name: "$(PROJECT_NAME)"/g' stack.yaml; \
-	  sed -i 's/ARG PROJECT_NAME=.*/ARG PROJECT_NAME=$(PROJECT_NAME)/g' Dockerfile; \
+	  sed -i 's/ARG PROJECT_NAME=.*/ARG PROJECT_NAME=$(PROJECT_NAME)/g' docker/Dockerfile; \
 	fi
 
 setup: update-stack-yaml
@@ -198,7 +198,7 @@ run: setup
 release: setup
 	stack build -j4 --ghc-options "-j16 +RTS -A256m -RTS" --docker
 
-docker-build: releasefile)
+docker-build: release
 	docker build --build-arg PROJECT_NAME=$(PROJECT_NAME) -t $(PROJECT_NAME):latest -f docker/Dockerfile .
 
 docker-build-multi: 
@@ -419,7 +419,7 @@ cabal: true
 --restart=stack.yaml
 --restart=package.yaml
 
-{-# START_FILE .ghcid #-}
+{-# START_FILE .ghci #-}
 -- OPTIONS_GHC
 :set +m
 :set +s
@@ -469,7 +469,7 @@ in
     );
 }
 
-{-# START_FILE Dockerfile #-}
+{-# START_FILE docker/Dockerfile #-}
 ARG PROJECT_NAME=change-project-name-here
 FROM fpco/stack-build:lts-24.21
 WORKDIR /app
