@@ -1,6 +1,6 @@
 {-# START_FILE stack.yaml #-}
-# https://www.stackage.org/lts-24.20
-resolver: lts-24.20
+# https://www.stackage.org/lts-24.21
+resolver: lts-24.21
 
 packages:
 - .
@@ -9,17 +9,18 @@ extra-package-dbs: []
 extra-deps: []
 flags: {}
 
-# nix:
-#   enable: true
-#   pure: true
-#   packages:
-#   - zlib
-#   - glpk
-#   - pcre
-#   shell-file: shell.nix
-#   nix-shell-options: []
-#   path: []
-#   add-gc-roots: false
+notify-if-nix-on-path: false
+#nix:
+#  enable: true
+#  pure: true
+#  packages:
+#  - zlib
+#  - glpk
+#  - pcre
+#  #shell-file: shell.nix
+#  nix-shell-options: []
+#  path: []
+#  add-gc-roots: false
 
 {-# START_FILE package.yaml #-}
 name:                {{name}}
@@ -41,12 +42,18 @@ dependencies:
 - base >= 4.18 && < 5
 - containers
 - flow
+- mtl
 - parallel
+- text
 
 default-extensions:
 - DataKinds
+- DeriveGeneric
 - ExplicitForAll
+- GADTs
+- KindSignatures
 - StandaloneKindSignatures
+- OverloadedStrings
 - TypeApplications
 
 ghc-options:
@@ -141,40 +148,82 @@ main = do
   someFunc
 
 {-# START_FILE Makefile #-}
-.PHONY: test coverage
+.PHONY: test coverage install update-stack-yaml
+
+# Extract project name from directory path
+PROJECT_NAME := $(shell basename $(CURDIR))
 
 all: clean setup build test run
 
 clean:
 	stack clean
 
-setup:
+update-stack-yaml:
+	@if [ "`uname`" = "Darwin" ]; then \
+	  sed -i '' 's/container-name: ".*"/container-name: "$(PROJECT_NAME)"/g' stack.yaml; \
+	  sed -i '' 's/ARG PROJECT_NAME=.*/ARG PROJECT_NAME=$(PROJECT_NAME)/g' Dockerfile; \
+	else \
+	  sed -i 's/container-name: ".*"/container-name: "$(PROJECT_NAME)"/g' stack.yaml; \
+	  sed -i 's/ARG PROJECT_NAME=.*/ARG PROJECT_NAME=$(PROJECT_NAME)/g' Dockerfile; \
+	fi
+
+setup: update-stack-yaml
 	stack setup
 	stack test --only-dependencies
 
-build:
-	stack build
+format: setup
+	stylish-haskell --config .stylish-haskell.yaml -r -i ./**/*.hs
 
-build-fast:
-	stack build --fast --file-watch --ghc-options "-j4 +RTS -A128m -n2m -RTS"
+build: setup
+	stack build --fast -j4 --ghc-options "-j16 +RTS -A256m -RTS"
 
-test:
+test: setup
 	stack test --fast
 
-coverage:
+coverage: setup
 	stack test --coverage --fast --haddock
 
-watch-test:
+watch-test: setup
 	stack test --fast --file-watch --watch-all
 
-watch-coverage:
+watch-coverage: setup
 	stack test --coverage --fast --file-watch --watch-all --haddock
 
-ghcid:
+ghcid: setup
 	ghcid --command "stack ghci test/Spec.hs"
 
-run:
-	time stack exec {{name}}-exe
+run: setup
+	time stack exec $(PROJECT_NAME)-exe
+
+release: setup
+	stack build -j4 --ghc-options "-j16 +RTS -A256m -RTS" --docker
+
+docker-build: releasefile)
+	docker build --build-arg PROJECT_NAME=$(PROJECT_NAME) -t $(PROJECT_NAME):latest -f docker/Dockerfile .
+
+docker-build-multi: 
+	docker build --build-arg PROJECT_NAME=$(PROJECT_NAME) -t $(PROJECT_NAME):latest -f docker/Dockerfile .
+
+docker-run: docker-build
+	mkdir -p ./data
+	docker run -it --rm \
+	  --name $(PROJECT_NAME)-app \
+	  -v $(PWD)/data:/app/data \
+	  $(PROJECT_NAME):latest
+
+docker-compose-up:
+	docker compose -f docker/docker-compose.yaml up --build -d
+
+docker-compose-down:
+	docker compose -f docker/docker-compose.yaml down --volumes
+
+docker-compose-logs:
+	docker compose -f docker/docker-compose.yaml logs -f
+
+install: release
+	mkdir -p $(HOME)/.local/bin
+	cp $(shell stack path --local-install-root)/bin/$(PROJECT_NAME)-exe $(HOME)/.local/bin/
+
 
 {-# START_FILE README.md #-}
 # {{name}}
@@ -182,7 +231,7 @@ run:
 ## How to create a project
 
 ```bash
-stack new <project-name> mingyuchoo/new-template
+stack new <project-name> mingyuchoo/cli
 ```
 
 ## How to build
@@ -262,6 +311,107 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 {-# START_FILE .projectile #-}
 
 
+{-# START_FILE format.sh #-}
+#!/bin/bash
+
+echo "Formatting Haskell files..."
+
+# Function to format files in a directory
+format_directory() {
+  local dir=$1
+  
+  # Check if directory exists
+  if [ ! -d "$dir" ]; then
+    echo "Directory $dir does not exist, skipping..."
+    return
+  fi
+  
+  # Check if there are any .hs files in the directory
+  if [ -z "$(find "$dir" -name '*.hs' 2>/dev/null)" ]; then
+    echo "No Haskell files found in $dir, skipping..."
+    return
+  fi
+  
+  # Process each .hs file in the directory
+  find "$dir" -name "*.hs" | while read -r file; do
+    if [ -f "$file" ]; then
+      echo "Processing $file"
+      
+      # Check for <| operator in test files
+      if [[ "$dir" == "test" && $(grep -q "<|" "$file"; echo $?) -eq 0 ]]; then
+        echo "Skipping $file (contains <| operator)"
+      else
+        stylish-haskell -i "$file" || echo "Failed to format $file"
+      fi
+    fi
+  done
+}
+
+# Format files in common Haskell project directories
+format_directory "src"
+format_directory "app"
+format_directory "test"
+
+# Format any other .hs files in the current directory
+if [ -n "$(find . -maxdepth 1 -name '*.hs' 2>/dev/null)" ]; then
+  echo "Processing Haskell files in current directory"
+  find . -maxdepth 1 -name "*.hs" | while read -r file; do
+    echo "Processing $file"
+    stylish-haskell -i "$file" || echo "Failed to format $file"
+  done
+fi
+
+echo "Formatting complete"
+
+{-# START_FILE .stylish-haskell.yaml #-}
+steps:
+  - module_header:
+       indent: 4
+       sort: true
+       separate_lists: true
+       break_where: always
+       open_bracket: next_line
+  - records:
+       equals: "same_line"
+       first_field: "same_line"
+       field_comment: 2
+       deriving: 5
+       via: "indent 2"
+       sort_deriving: true
+       break_enums: false
+       break_single_constructors: true
+       curried_context: false
+  - simple_align:
+      cases: always
+      top_level_patterns: always
+      records: always
+      multi_way_if: always
+  - imports:
+      align: global
+      list_align: after_alias
+      pad_module_names: true
+      long_list_align: inline
+      empty_list_align: inherit
+      list_padding: 4
+      separate_lists: true
+      space_surround: false
+      post_qualify: false
+      group_imports: true
+      group_rules:
+        - match: ".*"
+          sub_group: "^[^.]+"
+  - language_pragmas:
+      style: vertical
+      align: true
+      remove_redundant: true
+      language_prefix: LANGUAGE
+  - tabs:
+       spaces: 4
+  - trailing_whitespace: {}
+columns: 80
+newline: lf
+cabal: true
+
 {-# START_FILE .ghcid #-}
 --command=stack ghci
 --test=:main
@@ -299,7 +449,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # default.nix
 let
   pkgs = import <nixpkgs> {};
-  compilerVersion = "ghc963";
+  compilerVersion = "ghc9122";
   compiler = pkgs.haskell.packages."${compilerVersion}";
 in
   compiler.developPackage {
@@ -318,3 +468,24 @@ in
       ]
     );
 }
+
+{-# START_FILE Dockerfile #-}
+ARG PROJECT_NAME=change-project-name-here
+FROM fpco/stack-build:lts-24.21
+WORKDIR /app
+
+ARG PROJECT_NAME
+COPY stack.yaml stack.yaml.lock package.yaml ${PROJECT_NAME}.cabal Setup.hs ./
+COPY README.md CHANGELOG.md LICENSE ./
+COPY src/ src/
+COPY app/ app/
+COPY test/ test/
+
+RUN stack setup --no-docker && stack build --dependencies-only --no-docker
+
+ARG PROJECT_NAME
+RUN stack install --no-docker --local-bin-path /app/bin
+
+RUN cp /app/bin/${PROJECT_NAME}-exe /app/bin/app-exe 
+
+CMD ["sh", "-c", "echo \"Starting app...\" && /app/bin/app-exe"]

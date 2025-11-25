@@ -1,0 +1,498 @@
+{-# START_FILE stack.yaml #-}
+# https://www.stackage.org/lts-24.21
+resolver: lts-24.21
+
+packages:
+- .
+
+extra-package-dbs: []
+extra-deps: []
+flags: {}
+
+notify-if-nix-on-path: false
+#nix:
+#  enable: true
+#  pure: true
+#  packages:
+#  - zlib
+#  - glpk
+#  - pcre
+#  #shell-file: shell.nix
+#  nix-shell-options: []
+#  path: []
+#  add-gc-roots: false
+
+{-# START_FILE package.yaml #-}
+name:                {{name}}
+version:             0.1.0.0
+github:              {{github-username}}{{^github-username}}githubuser{{/github-username}}/{{name}}
+license:             BSD-3-Clause
+author:              {{author-name}}{{^author-name}}Author name here{{/author-name}}
+maintainer:          {{author-email}}{{^author-email}}example@example.com{{/author-email}}
+copyright:           {{copyright}}{{^copyright}}{{year}}{{^year}}2026{{/year}} {{author-name}}{{^author-name}}Author name here{{/author-name}}{{/copyright}}
+synopsis:            Short description of your package
+category:            {{category}}{{^category}}Learning{{/category}}
+description:         Please see the README on GitHub at <https://github.com/{{github-username}}{{^github-username}}githubuser{{/github-username}}/{{name}}#readme>
+
+extra-source-files:
+- README.md
+- CHANGELOG.md
+
+dependencies:
+- base >= 4.18 && < 5
+- containers
+- flow
+- mtl
+- parallel
+- text
+
+default-extensions:
+- DataKinds
+- DeriveGeneric
+- ExplicitForAll
+- GADTs
+- KindSignatures
+- StandaloneKindSignatures
+- OverloadedStrings
+- TypeApplications
+
+ghc-options:
+- -Wall
+- -O2
+- -haddock
+
+language: GHC2021
+
+library:
+  source-dirs: src
+
+executables:
+  {{name}}-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -dynamic
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - {{name}}
+
+tests:
+  {{name}}-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -dynamic
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - {{name}}
+    - hspec
+    - doctest
+    - doctest-discover
+
+{-# START_FILE Setup.hs #-}
+import Distribution.Simple
+
+main :: IO ()
+main = defaultMain
+
+{-# START_FILE test/Spec.hs #-}
+-- {-# OPTIONS_GHC -F -pgmF doctest-discover #-}
+-- {-# OPTIONS_GHC -F -pgmF hspec-discover   #-}
+
+import Test.Hspec
+import Lib
+
+main :: IO ()
+main = hspec spec
+
+spec :: Spec
+spec = do
+    describe "Given Prelude" $ do
+        context "when use `read` function" $ do
+            it "should parse integers" $ do
+                read "10" `shouldBe` (10 :: Int)
+            it "should parse floating-point numbers" $ do
+                read "2.5" `shouldBe` (2.5 :: Float)
+    describe "Given Lib" $ do
+        context "when use `someFunc` function" $ do
+            it "should be succeeded" $ do
+              someFunc
+
+{-# START_FILE src/Lib.hs #-}
+module Lib
+    ( someFunc
+    ) where
+
+someFunc :: IO ()
+someFunc = putStrLn "someFunc"
+
+{-# START_FILE app/Main.hs #-}
+module Main
+    ( main
+    ) where
+
+import Lib
+import System.IO
+    ( BufferMode (NoBuffering)
+    , hSetBuffering
+    , stdout
+    )
+
+main :: IO ()
+main = do
+  hSetBuffering stdout NoBuffering
+  someFunc
+
+{-# START_FILE Makefile #-}
+.PHONY: test coverage install update-stack-yaml
+
+# Extract project name from directory path
+PROJECT_NAME := $(shell basename $(CURDIR))
+
+all: clean setup build test run
+
+clean:
+	stack clean
+
+update-stack-yaml:
+	@if [ "`uname`" = "Darwin" ]; then \
+	  sed -i '' 's/container-name: ".*"/container-name: "$(PROJECT_NAME)"/g' stack.yaml; \
+	  sed -i '' 's/ARG PROJECT_NAME=.*/ARG PROJECT_NAME=$(PROJECT_NAME)/g' Dockerfile; \
+	else \
+	  sed -i 's/container-name: ".*"/container-name: "$(PROJECT_NAME)"/g' stack.yaml; \
+	  sed -i 's/ARG PROJECT_NAME=.*/ARG PROJECT_NAME=$(PROJECT_NAME)/g' Dockerfile; \
+	fi
+
+setup: update-stack-yaml
+	stack setup
+	stack test --only-dependencies
+
+format: setup
+	stylish-haskell --config .stylish-haskell.yaml -r -i ./**/*.hs
+
+build: setup
+	stack build --fast -j4 --ghc-options "-j16 +RTS -A256m -RTS"
+
+test: setup
+	stack test --fast
+
+coverage: setup
+	stack test --coverage --fast --haddock
+
+watch-test: setup
+	stack test --fast --file-watch --watch-all
+
+watch-coverage: setup
+	stack test --coverage --fast --file-watch --watch-all --haddock
+
+ghcid: setup
+	ghcid --command "stack ghci test/Spec.hs"
+
+run: setup
+	time stack exec $(PROJECT_NAME)-exe
+
+release: setup
+	stack build -j4 --ghc-options "-j16 +RTS -A256m -RTS" --docker
+
+docker-build: releasefile)
+	docker build --build-arg PROJECT_NAME=$(PROJECT_NAME) -t $(PROJECT_NAME):latest -f docker/Dockerfile .
+
+docker-build-multi: 
+	docker build --build-arg PROJECT_NAME=$(PROJECT_NAME) -t $(PROJECT_NAME):latest -f docker/Dockerfile .
+
+docker-run: docker-build
+	mkdir -p ./data
+	docker run -it --rm \
+	  --name $(PROJECT_NAME)-app \
+	  -p 8000:8000 \
+	  -v $(PWD)/data:/app/data \
+	  $(PROJECT_NAME):latest
+
+docker-run-multi: docker-build-multi
+	docker run -it --rm -p 8000:8000 $(PROJECT_NAME):latest
+
+docker-compose-up:
+	docker compose -f docker/docker-compose.yaml up --build -d
+
+docker-compose-down:
+	docker compose -f docker/docker-compose.yaml down --volumes
+
+docker-compose-logs:
+	docker compose -f docker/docker-compose.yaml logs -f
+
+install: release
+	mkdir -p $(HOME)/.local/bin
+	cp $(shell stack path --local-install-root)/bin/$(PROJECT_NAME)-exe $(HOME)/.local/bin/
+
+
+{-# START_FILE README.md #-}
+# {{name}}
+
+## How to create a project
+
+```bash
+stack new <project-name> mingyuchoo/new-template
+```
+
+## How to build
+
+```bash
+stack build
+# or
+stack build --fast --file-watch --ghc-options "-j4 +RTS -A128m -n2m -RTS"
+```
+
+## How to test as watch mode
+
+```bash
+stack test --fast --file-watch --watch-all
+# or
+stack test --coverage --fast --file-watch --watch-all --haddock
+# or
+ghcid --command "stack ghci test/Spec.hs"
+```
+
+## How to run
+
+```bash
+stack run
+```
+You can also use `Makefile` for these works.
+
+{-# START_FILE CHANGELOG.md #-}
+# Changelog for `{{ name }}`
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to the
+[Haskell Package Versioning Policy](https://pvp.haskell.org/).
+
+## Unreleased
+
+## 0.1.0.0 - YYYY-MM-DD
+
+{-# START_FILE LICENSE #-}
+Copyright {{author-name}}{{^author-name}}Author name here{{/author-name}} (c) {{year}}{{^year}}2026{{/year}}
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+
+    * Neither the name of {{author-name}}{{^author-name}}Author name here{{/author-name}} nor the names of other
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+{-# START_FILE .gitignore #-}
+.stack-work/
+*~
+
+{-# START_FILE .projectile #-}
+
+
+{-# START_FILE format.sh #-}
+#!/bin/bash
+
+echo "Formatting Haskell files..."
+
+# Function to format files in a directory
+format_directory() {
+  local dir=$1
+  
+  # Check if directory exists
+  if [ ! -d "$dir" ]; then
+    echo "Directory $dir does not exist, skipping..."
+    return
+  fi
+  
+  # Check if there are any .hs files in the directory
+  if [ -z "$(find "$dir" -name '*.hs' 2>/dev/null)" ]; then
+    echo "No Haskell files found in $dir, skipping..."
+    return
+  fi
+  
+  # Process each .hs file in the directory
+  find "$dir" -name "*.hs" | while read -r file; do
+    if [ -f "$file" ]; then
+      echo "Processing $file"
+      
+      # Check for <| operator in test files
+      if [[ "$dir" == "test" && $(grep -q "<|" "$file"; echo $?) -eq 0 ]]; then
+        echo "Skipping $file (contains <| operator)"
+      else
+        stylish-haskell -i "$file" || echo "Failed to format $file"
+      fi
+    fi
+  done
+}
+
+# Format files in common Haskell project directories
+format_directory "src"
+format_directory "app"
+format_directory "test"
+
+# Format any other .hs files in the current directory
+if [ -n "$(find . -maxdepth 1 -name '*.hs' 2>/dev/null)" ]; then
+  echo "Processing Haskell files in current directory"
+  find . -maxdepth 1 -name "*.hs" | while read -r file; do
+    echo "Processing $file"
+    stylish-haskell -i "$file" || echo "Failed to format $file"
+  done
+fi
+
+echo "Formatting complete"
+
+{-# START_FILE .stylish-haskell.yaml #-}
+steps:
+  - module_header:
+       indent: 4
+       sort: true
+       separate_lists: true
+       break_where: always
+       open_bracket: next_line
+  - records:
+       equals: "same_line"
+       first_field: "same_line"
+       field_comment: 2
+       deriving: 5
+       via: "indent 2"
+       sort_deriving: true
+       break_enums: false
+       break_single_constructors: true
+       curried_context: false
+  - simple_align:
+      cases: always
+      top_level_patterns: always
+      records: always
+      multi_way_if: always
+  - imports:
+      align: global
+      list_align: after_alias
+      pad_module_names: true
+      long_list_align: inline
+      empty_list_align: inherit
+      list_padding: 4
+      separate_lists: true
+      space_surround: false
+      post_qualify: false
+      group_imports: true
+      group_rules:
+        - match: ".*"
+          sub_group: "^[^.]+"
+  - language_pragmas:
+      style: vertical
+      align: true
+      remove_redundant: true
+      language_prefix: LANGUAGE
+  - tabs:
+       spaces: 4
+  - trailing_whitespace: {}
+columns: 80
+newline: lf
+cabal: true
+
+{-# START_FILE .ghcid #-}
+--command=stack ghci
+--test=:main
+--warnings
+--restart=stack.yaml
+--restart=package.yaml
+
+{-# START_FILE .ghcid #-}
+-- OPTIONS_GHC
+:set +m
+:set +s
+:set +t
+:set -Wall
+
+--  PROMPT
+:set prompt "\ESC[1;35m\x03BB> \ESC[m"
+:set prompt-cont "\ESC[1;35m > \ESC[m"
+
+-- INCLUDE DIRECTORIES
+:set -iapp
+:set -isrc
+:set -itest
+
+-- LANGUAGE EXTENSIONS
+:set -XExplicitForAll
+:set -XStandaloneKindSignatures
+
+-- HLINT
+:def hlint const . return $ ":! hlint \"src\""
+
+-- HOOGLE
+:def hoogle \x -> return $ ":! hoogle --count=20 \"" ++ x ++ "\""
+
+{-# START_FILE default.nix #-}
+# default.nix
+let
+  pkgs = import <nixpkgs> {};
+  compilerVersion = "ghc9122";
+  compiler = pkgs.haskell.packages."${compilerVersion}";
+in
+  compiler.developPackage {
+  root = ./.;
+  modifier = drv:
+    pkgs.haskell.lib.addBuildTools drv (
+      with pkgs.haskellPackages;
+      [ stack
+        cabal-install
+        stylish-haskell
+        haskell-language-server
+        hindent
+        hlint
+        hoogle
+        ghcid
+      ]
+    );
+}
+
+{-# START_FILE Dockerfile #-}
+ARG PROJECT_NAME=change-project-name-here
+FROM fpco/stack-build:lts-24.21
+WORKDIR /app
+
+ARG PROJECT_NAME
+COPY stack.yaml stack.yaml.lock package.yaml ${PROJECT_NAME}.cabal Setup.hs ./
+COPY README.md CHANGELOG.md LICENSE ./
+COPY src/ src/
+COPY app/ app/
+COPY test/ test/
+COPY static/ static/
+
+RUN stack setup --no-docker && stack build --dependencies-only --no-docker
+
+ARG PROJECT_NAME
+RUN stack install --no-docker --local-bin-path /app/bin
+
+RUN cp /app/bin/${PROJECT_NAME}-exe /app/bin/app-exe 
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "echo \"Starting server on port 8000...\" && /app/bin/app-exe"]
