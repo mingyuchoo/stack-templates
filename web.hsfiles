@@ -496,3 +496,29 @@ RUN cp /app/bin/${PROJECT_NAME}-exe /app/bin/app-exe
 EXPOSE 8000
 
 CMD ["sh", "-c", "echo \"Starting server on port 8000...\" && /app/bin/app-exe"]
+
+{-# START_FILE docker/docker-compose.yaml #-}
+services:
+  ${PROJECT_NAME}:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        PROJECT_NAME: ${PROJECT_NAME}
+    container_name: ${PROJECT_NAME}-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../data:/app/data
+    environment:
+      - PORT=8000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+volumes:
+  data:
+    driver: local

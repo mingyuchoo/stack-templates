@@ -489,3 +489,19 @@ RUN stack install --no-docker --local-bin-path /app/bin
 RUN cp /app/bin/${PROJECT_NAME}-exe /app/bin/app-exe 
 
 CMD ["sh", "-c", "echo \"Starting app...\" && /app/bin/app-exe"]
+
+{-# START_FILE docker/docker-compose.yaml #-}
+services:
+  ${PROJECT_NAME}:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        PROJECT_NAME: ${PROJECT_NAME}
+    container_name: ${PROJECT_NAME}-app
+    volumes:
+      - ../data:/app/data
+    restart: unless-stopped
+volumes:
+  data:
+    driver: local
